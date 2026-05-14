@@ -50,7 +50,7 @@ def plot_results(solution, scenario, params):
 
     # ПРАВКА 3: Использование fill_between вместо hlines для стимулов памяти
     for i, (start, dur, amp) in enumerate(scenario['I_M_schedule']):
-        ax1.fill_between([start, start + dur], -0.05, 1, color='blue', alpha=0.2,
+        ax1.fill_between([start, start + dur], -0.05, 0.05, color='blue', alpha=0.2,
                          label='Стимул памяти (Im)' if i == 0 else "")
 
     ax1.set_xlabel('Время (сек)')
@@ -86,7 +86,7 @@ def plot_results(solution, scenario, params):
     ax2.set_ylabel('Внимание A')
     ax2.set_xlim(-0.05, 1.05)
     ax2.set_ylim(-0.05, 1.05)
-    ax2.set_title('Фазовое пространство аттракторов')
+    ax2.set_title('Фазовое пространство')
     ax2.grid(True, alpha=0.3)
     ax2.legend(loc='lower right')
 
