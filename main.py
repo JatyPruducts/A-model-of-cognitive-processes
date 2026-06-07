@@ -1,10 +1,12 @@
-# main.py
+import matplotlib
+matplotlib.use('TkAgg')
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import solve_ivp
 import config as cfg
 import model
 import scenarios
+from mpl_toolkits.mplot3d import Axes3D
 
 
 def run_simulation():
@@ -32,63 +34,64 @@ def run_simulation():
 
 
 def plot_results(solution, scenario, params):
+    """Смешанная визуализация: 2D временные ряды и 3D фазовая траектория"""
     t = solution.t
     M = solution.y[0]
     A = solution.y[1]
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 7))
+    # Создаем фигуру с двумя подграфиками
+    fig = plt.figure(figsize=(16, 8))
     plt.suptitle(scenario['name'], fontsize=16)
 
-    # --- График 1: Временные ряды ---
+    # --- ЛЕВЫЙ ГРАФИК: 2D Временная динамика ---
+    ax1 = fig.add_subplot(1, 2, 1)
+    
+    # Отрисовка переменных
     ax1.plot(t, M, label='Память M(t)', color='blue', linewidth=2, zorder=4)
     ax1.plot(t, A, label='Внимание A(t)', color='red', linewidth=2, linestyle='--', zorder=4)
-
-    # Визуализация дистракции (серые зоны)
+    
+    # Возвращаем визуализацию помехи (серые зоны)
     for i, (start, dur, amp) in enumerate(scenario['D_schedule']):
-        ax1.axvspan(start, start + dur, color='gray', alpha=0.2,
+        ax1.axvspan(start, start+dur, color='gray', alpha=0.2, 
                     label='Помеха D(t)' if i == 0 else "")
-
-    # ПРАВКА 3: Использование fill_between вместо hlines для стимулов памяти
+    
+    # Возвращаем fill_between для стимулов памяти
     for i, (start, dur, amp) in enumerate(scenario['I_M_schedule']):
-        ax1.fill_between([start, start + dur], -0.05, 0.05, color='blue', alpha=0.2,
+        ax1.fill_between([start, start + dur], -0.05, 0.05, color='blue', alpha=0.3, 
                          label='Стимул памяти (Im)' if i == 0 else "")
 
+    # Настройка сетки и осей для левого графика
     ax1.set_xlabel('Время (сек)')
     ax1.set_ylabel('Уровень активности [0..1]')
     ax1.set_ylim(-0.08, 1.05)
     ax1.set_title('Динамика процессов во времени')
-    ax1.grid(True, linestyle=':', alpha=0.6)
+    ax1.grid(True, which='both', linestyle=':', alpha=0.6) # Явно включаем сетку
     ax1.legend(loc='upper right', fontsize='small')
 
-    # --- График 2: Фазовый портрет ---
-    m_range = np.linspace(-0.05, 1.05, 25)
-    a_range = np.linspace(-0.05, 1.05, 25)
-    MM, AA = np.meshgrid(m_range, a_range)
+    # --- ПРАВЫЙ ГРАФИК: 3D Траектория в пространстве (M, A, t) ---
+    from mpl_toolkits.mplot3d import Axes3D
+    ax2 = fig.add_subplot(1, 2, 2, projection='3d')
+    
+    # Рисуем траекторию: по осям X и Y - когнитивные уровни, по Z - время
+    ax2.plot(M, A, t, color='purple', linewidth=2, label='Траектория (M, A, t)', zorder=5)
+    
+    # Рисуем "проекцию" на плоскость (дно графика) для наглядности (t=0)
+    ax2.plot(M, A, zs=0, zdir='z', color='black', alpha=0.2, label='Проекция на плоскость MA')
 
-    empty_scenario = {'I_M_schedule': [], 'I_A_schedule': [], 'D_schedule': []}
-    U, V = np.zeros(MM.shape), np.zeros(MM.shape)
+    # Ключевые точки в 3D
+    ax2.scatter(M[0], A[0], t[0], color='green', s=100, label='Старт (t=0)')
+    ax2.scatter(M[-1], A[-1], t[-1], color='red', s=150, marker='*', label='Финиш (t=end)')
 
-    for i in range(MM.shape[0]):
-        for j in range(MM.shape[1]):
-            derivs = model.cognitive_system(0, [MM[i, j], AA[i, j]], params, empty_scenario)
-            U[i, j] = derivs[0]
-            V[i, j] = derivs[1]
-
-    ax2.streamplot(MM, AA, U, V, color=(0.5, 0.5, 0.5, 0.4), linewidth=0.8, density=1.2)
-
-    # ПРАВКА 2: Уменьшение толщины линии траектории до 1.5
-    ax2.plot(M, A, color='purple', linewidth=1.5, label='Траектория процесса', zorder=5)
-
-    ax2.scatter(M[0], A[0], color='green', s=100, label='Старт', zorder=6)
-    ax2.scatter(M[-1], A[-1], color='red', s=150, marker='*', label='Финиш', zorder=6)
-
+    # Настройка осей и сетки для 3D
     ax2.set_xlabel('Память M')
     ax2.set_ylabel('Внимание A')
-    ax2.set_xlim(-0.05, 1.05)
-    ax2.set_ylim(-0.05, 1.05)
-    ax2.set_title('Фазовое пространство')
-    ax2.grid(True, alpha=0.3)
-    ax2.legend(loc='lower right')
+    ax2.set_zlabel('Время t (сек)')
+    ax2.set_title('Диаграмма, представляющая поведение неавтономной системы')
+    ax2.grid(True) # Включаем сетку в 3D
+    
+    # Начальный угол обзора (можно крутить мышкой)
+    ax2.view_init(elev=25, azim=45)
+    ax2.legend(loc='lower left', fontsize='small')
 
     plt.tight_layout()
     plt.show()
